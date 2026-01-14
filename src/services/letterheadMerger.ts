@@ -1,7 +1,7 @@
-import { Document, Paragraph, TextRun, PageBreak, ImageRun, AlignmentType, Packer } from 'docx';
+import { Document, Paragraph, TextRun, PageBreak, ImageRun, AlignmentType } from 'docx';
 import * as mammoth from 'mammoth';
 import { FormattingOptions, ExtractedImage } from '../types';
-import { createFormattedParagraph, applyFormattingToParagraphs } from './formattingApplier';
+import { createFormattedParagraph } from './formattingApplier';
 import { parseWordDocument } from './wordProcessor';
 import { base64ToUint8Array, getImageDimensions, extractImagesFromHtml } from '../utils/imageExtractor';
 
@@ -115,7 +115,6 @@ const createImageRun = async (image: ExtractedImage): Promise<ImageRun> => {
       width: width,
       height: height,
     },
-    type: docxImageType as any,
   });
 };
 
@@ -125,7 +124,7 @@ const createImageRun = async (image: ExtractedImage): Promise<ImageRun> => {
 const createImageParagraph = async (image: ExtractedImage, alignment: 'left' | 'center' | 'right' = 'center'): Promise<Paragraph> => {
   const imageRun = await createImageRun(image);
   
-  const alignmentMap: Record<string, AlignmentType> = {
+  const alignmentMap: Record<string, typeof AlignmentType[keyof typeof AlignmentType]> = {
     left: AlignmentType.LEFT,
     center: AlignmentType.CENTER,
     right: AlignmentType.RIGHT,
@@ -135,33 +134,6 @@ const createImageParagraph = async (image: ExtractedImage, alignment: 'left' | '
     children: [imageRun],
     alignment: alignmentMap[alignment],
   });
-};
-
-/**
- * Diagnostic test: Check if a paragraph can be serialized (actually works)
- * This helps determine if validation warnings are false negatives
- */
-const testParagraphSerialization = async (para: Paragraph, expectedText: string): Promise<boolean> => {
-  try {
-    // Create a minimal document with just this paragraph
-    const testDoc = new Document({
-      sections: [{
-        properties: {},
-        children: [para]
-      }]
-    });
-    
-    // Try to serialize it
-    const blob = await Packer.toBlob(testDoc);
-    
-    // If we got here without error, the paragraph structure is valid
-    // The docx library accepts it, so it should work
-    console.log('[DIAGNOSTIC] Paragraph serialization test passed for:', expectedText.substring(0, 30));
-    return true;
-  } catch (error) {
-    console.error('[DIAGNOSTIC] Paragraph serialization test FAILED:', error);
-    return false;
-  }
 };
 
 /**
